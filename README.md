@@ -1,1 +1,1 @@
-Bad_Map_Generator
+Bad_Mad_Generator
