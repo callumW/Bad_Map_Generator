@@ -23,6 +23,6 @@ void LOG(std::string msg)
 
 Logger& default_log()
 {
-    static Logger lg{"log.txt"};
+    static Logger lg{"generate.log"};
     return lg;
 }

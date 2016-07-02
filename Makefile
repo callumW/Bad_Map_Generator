@@ -1,5 +1,4 @@
 CC=g++
-LINKER=ld
 FLAGS=-g -Wall -std=c++14
 LINKS= -LF:\libs\SDL2-2.0.4\i686-w64-mingw32\lib -lmingw32 -lSDL2main \
 	-lSDL2 -mwindows -Wl,--no-undefined -lm -ldinput8 -ldxguid -ldxerr8 \
