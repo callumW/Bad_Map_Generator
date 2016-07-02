@@ -269,9 +269,11 @@ void fill_with_map(Pixel* map, int width, int height)
     }
 
     /** Make the land bigger **/
+    /*
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             if (map[i*width + j])
         }
     }
+    */
 }
