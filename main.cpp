@@ -24,6 +24,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include <SDL2/SDL.h>
+#include <libnoise/module/perlin.h>
 
 #include <iostream>
 #include <stdio.h>
@@ -51,11 +52,12 @@ struct Pixel {
     Uint8 r;
     Uint8 g;
     Uint8 b;
+	double height;
 };
 
 /** Screen Variables **/
-constexpr int screen_width = 1024;
-constexpr int screen_height = 768;
+constexpr int screen_width = 640;
+constexpr int screen_height = 480;
 constexpr int map_width = screen_width / PIXEL_LENGTH;
 constexpr int map_height = screen_height / PIXEL_LENGTH;
 
@@ -64,10 +66,12 @@ bool running = true;
 bool reload = true;
 bool greyscale_reload = false;
 bool load_map = false;
-
+bool noisify_map = false;
 /* Random stuff */
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937 random_num{seed};  //generator
+
+noise::module::Perlin gen;	//noise generator
 
 /*
 A distribution allows us to specify a range for our random numbers. Here we use
@@ -83,6 +87,10 @@ Uint8 get_num()
     return dist(random_num);
 }
 
+double noisify(double nx, double ny) {
+  // Rescale from -1.0:+1.0 to 0.0:1.0
+  return gen.GetValue(nx, ny, 0) / 2.0 + 0.5;
+}
 /*
 Fill the map with random color values
 */
@@ -92,7 +100,7 @@ void fill(Pixel* map, int width, int height)
         for (int j=0; j<width; j++) {
             SDL_Rect r{j * PIXEL_LENGTH, i * PIXEL_LENGTH, PIXEL_LENGTH,
                 PIXEL_LENGTH};
-            map[i*width + j] = Pixel{r, 0, get_num(), get_num(), get_num()};
+            map[i*width + j] = Pixel{r, 0, get_num(), get_num(), get_num(), 0};
         }
     }
 }
@@ -122,29 +130,82 @@ void fill_with_map(Pixel* map, int width, int height)
     /** Lay the seeds of land **/
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
-            if (standard_dist(random_num) < 4) {
+            if (standard_dist(random_num) < 4) { //~50% chance
                 map[i*width + j].ID = 1;
-                map[i*width + j].r = 0;
-                map[i*width + j].g = 200;
-                map[i*width + j].b = 0;
             }
             else {
                 map[i*width + j].ID = 0;
-                map[i*width + j].r = 0;
-                map[i*width + j].g = 0;
-                map[i*width + j].b = 200;
             }
         }
     }
 
     /** Make the land bigger **/
-    /*
-    for (int i=0; i<height; i++) {
+	for (int k=0; k<150; k++) {
+	    for (int i=0; i<height; i++) {
+	        for (int j=0; j<width; j++) {
+
+	            if (map[i*width + j].ID == 1) {
+
+					if (i > 0 && i < height-1) {
+						if (j > 0 && j < width-1) {
+							if (standard_dist(random_num) < 26214) {
+								map[(i-1)*width + j].ID=1;
+								map[(i-1)*width + (j-1)].ID=1;
+								map[(i-1)*width + (j+1)].ID=1;
+								map[i*width + j].ID=1;
+								map[i*width + (j-1)].ID=1;
+								map[i*width + (j+1)].ID=1;
+								map[(i+1)*width + j].ID=1;
+								map[(i+1)*width + (j-1)].ID=1;
+								map[(i+1)*width + (j+1)].ID=1;
+							}
+						}
+					}
+				}
+	        }
+	    }
+	}
+
+	/** Color the map */
+	for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
-            if (map[i*width + j])
+            switch (map[i*width + j].ID) {
+			case 1:
+				map[i*width + j].r = 0;
+				map[i*width + j].g = 200;
+				map[i*width + j].b = 0;
+				break;
+			case 0:
+				map[i*width + j].r = 0;
+				map[i*width + j].g = 0;
+				map[i*width + j].b = 200;
+				break;
+			default:
+				map[i*width + j].r = 0;
+				map[i*width + j].g = 0;
+				map[i*width + j].b = 0;
+			}
         }
     }
-    */
+
+}
+
+void fill_noise(Pixel* map, int width, int height)
+{
+	for (int i=0; i<height; i++) {
+        for (int j=0; j<width; j++) {
+            map[i*width + j].height = noisify( j, i);
+			map[i*width + j].r = 255 * map[i*width + j].height;
+			map[i*width + j].g = 255 * map[i*width + j].height;
+			map[i*width + j].b = 255 * map[i*width + j].height;
+        }
+    }
+	/*
+	for (int i=0; i<height; i++) {
+        for (int j=0; j<width; j++) {
+
+        }
+    }*/
 }
 
 /*
@@ -179,10 +240,7 @@ void clear(SDL_Renderer* r)
     SDL_RenderClear(r);
 }
 
-void noisify(Pixel* map, int width, int height)
-{
 
-}
 
 /*
 Handle input from the user
@@ -205,6 +263,9 @@ void handle_input()
             else if (e.key.keysym.sym == SDLK_m) {
                 load_map = true;
             }
+			else if (e.key.keysym.sym == SDLK_n) {
+				noisify_map = true;
+			}
         }
         else if (e.type == SDL_QUIT) {
             running = false;
@@ -315,6 +376,18 @@ int main(int argc, char* argv[])
             render(map, map_width, map_height, renderer);
             SDL_RenderPresent(renderer);
         }
+		else if (noisify_map) {
+			noisify_map = false;
+            clear(renderer);
+            SDL_RenderPresent(renderer);
+            fill_noise(map, map_width, map_height);
+
+            clear(renderer);
+            render(map, map_width, map_height, renderer);
+            SDL_RenderPresent(renderer);
+
+			LOG(std::string{map[0].height});
+		}
         else {
             SDL_Delay(50);
         }
