@@ -1,16 +1,25 @@
 CC=g++
+SYSTEM := $(shell uname)
 FLAGS=-g -Wall -std=c++14
-LINKS= -LF:\libs\SDL2-2.0.4\i686-w64-mingw32\lib -lmingw32 -lSDL2main \
+ifeq ($(SYSTEM),MSYS_NT-10.0)
+	LINKS= -LF:\libs\SDL2-2.0.4\i686-w64-mingw32\lib -lmingw32 -lSDL2main \
 	-lSDL2 -mwindows -Wl,--no-undefined -lm -ldinput8 -ldxguid -ldxerr8 \
 	-luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lversion \
 	-luuid -lnoise -static
-SDL_FLAGS= -IF:\libs\SDL2-2.0.4\i686-w64-mingw32\include -Dmain=SDL_main
+	SDL_FLAGS= -IF:\libs\SDL2-2.0.4\i686-w64-mingw32\include -Dmain=SDL_main
+	SUF=.exe
+endif
+ifeq ($(SYSTEM),Linux)
+	LINKS := $(shell sdl2-config --static-libs) -lnoise
+	FLAGS += $(shell sdl2-config --cflags)
+	SUF=.out
+endif
 
 
 SOURCE=$(wildcard *.cpp)
 OBS=$(SOURCE:.cpp=.o)
 
-EXECUTABLE=generate.exe
+EXECUTABLE=generate$(SUF)
 
 all: $(OBS)
 	$(CC) $(FLAGS) $(OBS) -o $(EXECUTABLE) $(LINKS)

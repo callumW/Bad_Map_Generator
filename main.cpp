@@ -56,8 +56,8 @@ struct Pixel {
 };
 
 /** Screen Variables **/
-constexpr int screen_width = 640;
-constexpr int screen_height = 480;
+constexpr int screen_width = 800;
+constexpr int screen_height = 500;
 constexpr int map_width = screen_width / PIXEL_LENGTH;
 constexpr int map_height = screen_height / PIXEL_LENGTH;
 
@@ -71,7 +71,11 @@ bool noisify_map = false;
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937 random_num{seed};  //generator
 
+/** Noise Variables **/
 noise::module::Perlin gen;	//noise generator
+constexpr double freq_increment = 0.001;
+double frequency = 0.01;
+
 
 /*
 A distribution allows us to specify a range for our random numbers. Here we use
@@ -89,7 +93,7 @@ Uint8 get_num()
 
 double noisify(double nx, double ny) {
   // Rescale from -1.0:+1.0 to 0.0:1.0
-  return gen.GetValue(nx, ny, 0) / 2.0 + 0.5;
+  return gen.GetValue(nx, ny, 0.5) / 2.0 + 0.5;
 }
 /*
 Fill the map with random color values
@@ -192,12 +196,47 @@ void fill_with_map(Pixel* map, int width, int height)
 
 void fill_noise(Pixel* map, int width, int height)
 {
+
 	for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
-            map[i*width + j].height = noisify( j, i);
-			map[i*width + j].r = 255 * map[i*width + j].height;
-			map[i*width + j].g = 255 * map[i*width + j].height;
-			map[i*width + j].b = 255 * map[i*width + j].height;
+            map[i*width + j].height = noisify(frequency*j, frequency*i);
+
+            double height = map[i*width + j].height;
+            if (height < 0.5) {    //Deep sea
+                map[i*width + j].r = 0;
+    			map[i*width + j].g = 0;
+    			map[i*width + j].b = 100;
+            }
+            else if (height < 0.55) {     //If under water table
+                map[i*width + j].r = 0;
+    			map[i*width + j].g = 0;
+    			map[i*width + j].b = 200;
+            }
+            else if (height < 0.59) {     //sand beaches
+                map[i*width + j].r = 240;
+    			map[i*width + j].g = 255;
+    			map[i*width + j].b = 140;
+            }
+            else if (height < 0.8) { //grass
+                map[i*width + j].r = 0;
+    			map[i*width + j].g = 168;
+    			map[i*width + j].b = 42;
+            }
+            else if (height < 0.9) {    //darker grass
+                map[i*width + j].r = 0;
+    			map[i*width + j].g = 130;
+    			map[i*width + j].b = 33;
+            }
+            else if (height < 0.99999) {    //rock
+                map[i*width + j].r = 150;
+    			map[i*width + j].g = 150;
+    			map[i*width + j].b = 150;
+            }
+            else {      //snow caps
+                map[i*width + j].r = 255;
+    			map[i*width + j].g = 255;
+    			map[i*width + j].b = 255;
+            }
         }
     }
 	/*
@@ -264,8 +303,19 @@ void handle_input()
                 load_map = true;
             }
 			else if (e.key.keysym.sym == SDLK_n) {
+                gen.SetSeed(random_num());
 				noisify_map = true;
 			}
+            else if (e.key.keysym.sym == SDLK_UP) {
+                noisify_map = true;
+                frequency += freq_increment;
+                LOG("Frequency: " + std::to_string(frequency));
+            }
+            else if (e.key.keysym.sym == SDLK_DOWN) {
+                noisify_map = true;
+                frequency -= freq_increment;
+                LOG("Frequency: " + std::to_string(frequency));
+            }
         }
         else if (e.type == SDL_QUIT) {
             running = false;
@@ -385,8 +435,6 @@ int main(int argc, char* argv[])
             clear(renderer);
             render(map, map_width, map_height, renderer);
             SDL_RenderPresent(renderer);
-
-			LOG(std::string{map[0].height});
 		}
         else {
             SDL_Delay(50);
