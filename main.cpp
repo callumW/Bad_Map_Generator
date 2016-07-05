@@ -44,12 +44,24 @@ screen pixels to data pixels).
 */
 #define PIXEL_LENGTH 1
 
+enum class BIOME {
+    empty, deep_sea, shore, beach, grassland, woodland, mountain, snow
+};
+
+/** Distributions for calculating pixel colors base on BIOME **/
+std::uniform_int_distribution<Uint8> deep_sea_blue(100, 160);
+std::uniform_int_distribution<Uint8> shore_blue(200, 255);
+std::uniform_int_distribution<Uint8> grassland_green(150, 200);
+std::uniform_int_distribution<Uint8> woodland_green(130, 150);
+std::uniform_int_distribution<Uint8> mountain_all(85, 196);
+std::uniform_int_distribution<Uint8> snow_all(240, 255);
+
 /*
 A single pixel on screen
 */
 struct Pixel {
     SDL_Rect rect;
-    int ID;
+    BIOME ID;
     Uint8 r;
     Uint8 g;
     Uint8 b;
@@ -57,8 +69,9 @@ struct Pixel {
 };
 
 /** Screen Variables **/
-constexpr int screen_width = 800;
-constexpr int screen_height = 500;
+constexpr bool fullscreen = false;
+constexpr int screen_width = 512;
+constexpr int screen_height = 512;
 constexpr int map_width = screen_width / PIXEL_LENGTH;
 constexpr int map_height = screen_height / PIXEL_LENGTH;
 
@@ -75,7 +88,7 @@ std::mt19937 random_num{seed};  //generator
 /** Noise Variables **/
 noise::module::Perlin gen;	//noise generator
 constexpr double freq_increment = 0.001;
-double frequency = 0.01;
+double frequency = 0.004;
 
 
 /*
@@ -105,7 +118,8 @@ void fill(std::vector<Pixel>& map, int width, int height)
         for (int j=0; j<width; j++) {
             SDL_Rect r{j * PIXEL_LENGTH, i * PIXEL_LENGTH, PIXEL_LENGTH,
                 PIXEL_LENGTH};
-            map[i*width + j] = Pixel{r, 0, get_num(), get_num(), get_num(), 0};
+            map[i*width + j] = Pixel{r, BIOME::empty, get_num(), get_num(),
+                get_num(), 0};
         }
     }
 }
@@ -120,7 +134,7 @@ void fill_greyscale(std::vector<Pixel>& map, int width, int height)
             SDL_Rect r{j * PIXEL_LENGTH, i * PIXEL_LENGTH, PIXEL_LENGTH,
                 PIXEL_LENGTH};
             Uint8 c = get_num();
-            map[i*width + j] = Pixel{r, 0, c, c, c};
+            map[i*width + j] = Pixel{r, BIOME::empty, c, c, c};
         }
     }
 }
@@ -136,10 +150,10 @@ void fill_with_map(std::vector<Pixel>& map, int width, int height)
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             if (standard_dist(random_num) < 4) { //~50% chance
-                map[i*width + j].ID = 1;
+                map[i*width + j].ID = BIOME::grassland;
             }
             else {
-                map[i*width + j].ID = 0;
+                map[i*width + j].ID = BIOME::empty;
             }
         }
     }
@@ -149,20 +163,20 @@ void fill_with_map(std::vector<Pixel>& map, int width, int height)
 	    for (int i=0; i<height; i++) {
 	        for (int j=0; j<width; j++) {
 
-	            if (map[i*width + j].ID == 1) {
+	            if (map[i*width + j].ID == BIOME::grassland) {
 
 					if (i > 0 && i < height-1) {
 						if (j > 0 && j < width-1) {
 							if (standard_dist(random_num) < 26214) {
-								map[(i-1)*width + j].ID=1;
-								map[(i-1)*width + (j-1)].ID=1;
-								map[(i-1)*width + (j+1)].ID=1;
-								map[i*width + j].ID=1;
-								map[i*width + (j-1)].ID=1;
-								map[i*width + (j+1)].ID=1;
-								map[(i+1)*width + j].ID=1;
-								map[(i+1)*width + (j-1)].ID=1;
-								map[(i+1)*width + (j+1)].ID=1;
+								map[(i-1)*width + j].ID=BIOME::grassland;
+								map[(i-1)*width + (j-1)].ID=BIOME::grassland;
+								map[(i-1)*width + (j+1)].ID=BIOME::grassland;
+								map[i*width + j].ID=BIOME::grassland;
+								map[i*width + (j-1)].ID=BIOME::grassland;
+								map[i*width + (j+1)].ID=BIOME::grassland;
+								map[(i+1)*width + j].ID=BIOME::grassland;
+								map[(i+1)*width + (j-1)].ID=BIOME::grassland;
+								map[(i+1)*width + (j+1)].ID=BIOME::grassland;
 							}
 						}
 					}
@@ -175,12 +189,12 @@ void fill_with_map(std::vector<Pixel>& map, int width, int height)
 	for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             switch (map[i*width + j].ID) {
-			case 1:
+			case BIOME::grassland:
 				map[i*width + j].r = 0;
 				map[i*width + j].g = 200;
 				map[i*width + j].b = 0;
 				break;
-			case 0:
+			case BIOME::empty:
 				map[i*width + j].r = 0;
 				map[i*width + j].g = 0;
 				map[i*width + j].b = 200;
@@ -197,46 +211,55 @@ void fill_with_map(std::vector<Pixel>& map, int width, int height)
 
 void fill_noise(std::vector<Pixel>& map, int width, int height)
 {
-
+    long start_time = SDL_GetTicks();
 	for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             map[i*width + j].height = noisify(frequency*j, frequency*i);
 
             double height = map[i*width + j].height;
-            if (height < 0.5) {    //Deep sea
+            if (height < 0.55) {    //Deep sea
+                map[i*width + j].ID = BIOME::deep_sea;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = 0;
-    			map[i*width + j].b = 100;
+    			map[i*width + j].b = deep_sea_blue(random_num);
             }
-            else if (height < 0.55) {     //If under water table
+            else if (height < 0.57) {     //If under water table
+                map[i*width + j].ID = BIOME::shore;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = 0;
-    			map[i*width + j].b = 200;
+    			map[i*width + j].b = shore_blue(random_num);
             }
             else if (height < 0.59) {     //sand beaches
+                map[i*width + j].ID = BIOME::beach;
                 map[i*width + j].r = 240;
     			map[i*width + j].g = 255;
     			map[i*width + j].b = 140;
             }
             else if (height < 0.8) { //grass
+                map[i*width + j].ID = BIOME::grassland;
                 map[i*width + j].r = 0;
-    			map[i*width + j].g = 168;
-    			map[i*width + j].b = 42;
+    			map[i*width + j].g = grassland_green(random_num);
+    			map[i*width + j].b = 0;
             }
             else if (height < 0.9) {    //darker grass
+                map[i*width + j].ID = BIOME::woodland;
                 map[i*width + j].r = 0;
-    			map[i*width + j].g = 130;
-    			map[i*width + j].b = 33;
+    			map[i*width + j].g = woodland_green(random_num);
+    			map[i*width + j].b = 0;
             }
             else if (height < 0.99999) {    //rock
-                map[i*width + j].r = 150;
-    			map[i*width + j].g = 150;
-    			map[i*width + j].b = 150;
+                map[i*width + j].ID = BIOME::mountain;
+                Uint8 c_val = mountain_all(random_num);
+                map[i*width + j].r = c_val;
+    			map[i*width + j].g = c_val;
+    			map[i*width + j].b = c_val;
             }
             else {      //snow caps
-                map[i*width + j].r = 255;
-    			map[i*width + j].g = 255;
-    			map[i*width + j].b = 255;
+                map[i*width + j].ID = BIOME::snow;
+                Uint8 c_val = snow_all(random_num);
+                map[i*width + j].r = c_val;
+    			map[i*width + j].g = c_val;
+    			map[i*width + j].b = c_val;
             }
         }
     }
@@ -246,6 +269,10 @@ void fill_noise(std::vector<Pixel>& map, int width, int height)
 
         }
     }*/
+
+    long end_time = SDL_GetTicks();
+    LOG("Time taken to fill map with noise: " +
+        std::to_string(end_time-start_time) + "ms");
 }
 
 /*
@@ -254,6 +281,7 @@ Render the map on screen_width
 void render(const std::vector<Pixel>& map, int width, int height,
     SDL_Renderer* rend)
 {
+    long start_time = SDL_GetTicks();
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             const Pixel* p = &map[i*width + j];
@@ -269,6 +297,8 @@ void render(const std::vector<Pixel>& map, int width, int height,
             }
         }
     }
+    long end_time = SDL_GetTicks();
+    LOG("Rendering time: " + std::to_string(end_time-start_time) + "ms");
 }
 
 
@@ -339,9 +369,16 @@ int main(int argc, char* argv[])
         LOG(std::string{SDL_GetError()});
         return 1;
     }
-
-    SDL_Window* window = SDL_CreateWindow("Bad Map Generator!", 40, 40,
-        screen_width, screen_height, SDL_WINDOW_SHOWN);
+    SDL_Window* window;
+    if (fullscreen) {
+        window = SDL_CreateWindow("Bad Map Generator!", 40, 40,
+            screen_width, screen_height,
+            SDL_WINDOW_SHOWN|SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+    else {
+        window = SDL_CreateWindow("Bad Map Generator!", 40, 40,
+            screen_width, screen_height,SDL_WINDOW_SHOWN);
+    }
 
     if (window == NULL) {
         LOG("Could not create SDL_Window");
@@ -362,7 +399,14 @@ int main(int argc, char* argv[])
 
     //Create an array of on screen pixels
     std::vector<Pixel> map{};
-    map.reserve(map_width * map_height);
+    try {
+        map.reserve(map_width * map_height);
+    }
+    catch (const std::length_error& e) {
+        LOG("Failed to reserve enough space in the map vector");
+        LOG("Error: " + std::string{e.what()});
+        return 1;
+    }
 
     Uint32 current_time = 0;
     Uint32 frame_check_time = 0;
@@ -382,7 +426,7 @@ int main(int argc, char* argv[])
                 + std::to_string(frames * 1000.0 / (current_time -
                 frame_check_time))
                 + " | Runtime: " + std::to_string(current_time / 1000)
-                + "s"};
+                + "s" + " Frequency: " + std::to_string(frequency)};
 
             SDL_SetWindowTitle(window, msg.c_str());
 
