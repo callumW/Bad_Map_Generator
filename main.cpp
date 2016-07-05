@@ -31,6 +31,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdexcept>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <chrono>
 #include <random>
@@ -98,7 +99,7 @@ double noisify(double nx, double ny) {
 /*
 Fill the map with random color values
 */
-void fill(Pixel* map, int width, int height)
+void fill(std::vector<Pixel>& map, int width, int height)
 {
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
@@ -112,7 +113,7 @@ void fill(Pixel* map, int width, int height)
 /*
 Fill the map with greyscale color values
 */
-void fill_greyscale(Pixel* map, int width, int height)
+void fill_greyscale(std::vector<Pixel>& map, int width, int height)
 {
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
@@ -127,7 +128,7 @@ void fill_greyscale(Pixel* map, int width, int height)
 /*
 Fill the map with an actual map!
 */
-void fill_with_map(Pixel* map, int width, int height)
+void fill_with_map(std::vector<Pixel>& map, int width, int height)
 {
     std::uniform_int_distribution<int> standard_dist(0, 262144);
 
@@ -194,7 +195,7 @@ void fill_with_map(Pixel* map, int width, int height)
 
 }
 
-void fill_noise(Pixel* map, int width, int height)
+void fill_noise(std::vector<Pixel>& map, int width, int height)
 {
 
 	for (int i=0; i<height; i++) {
@@ -250,7 +251,8 @@ void fill_noise(Pixel* map, int width, int height)
 /*
 Render the map on screen_width
 */
-void render(const Pixel* map, int width, int height, SDL_Renderer* rend)
+void render(const std::vector<Pixel>& map, int width, int height,
+    SDL_Renderer* rend)
 {
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
@@ -359,12 +361,8 @@ int main(int argc, char* argv[])
     }
 
     //Create an array of on screen pixels
-    Pixel* map = (Pixel*) malloc(sizeof(Pixel) * map_width * map_height);
-
-    if (map == NULL) {
-        LOG("Failed to create screen array!");
-        return 1;
-    }
+    std::vector<Pixel> map{};
+    map.reserve(map_width * map_height);
 
     Uint32 current_time = 0;
     Uint32 frame_check_time = 0;
