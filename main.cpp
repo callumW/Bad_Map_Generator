@@ -73,8 +73,8 @@ struct Pixel {
 constexpr bool fullscreen = false;
 constexpr int screen_width = 512;
 constexpr int screen_height = 512;
-constexpr int map_width = screen_width / PIXEL_LENGTH;
-constexpr int map_height = screen_height / PIXEL_LENGTH;
+constexpr int map_width = 1000;
+constexpr int map_height = 1000;
 
 /* States */
 bool running = true;
@@ -216,40 +216,49 @@ void fill_noise(std::vector<Pixel>& map, int width, int height)
     long start_time = SDL_GetTicks();
 	for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
-            map[i*width + j].height = noisify(frequency*j, frequency*i);
+            double temp_height = noisify(frequency*j, frequency*i);
+            if (temp_height == 1.0)
+                temp_height -= 0.000001;
+            else if (temp_height == 0.0)
+                temp_height += 0.000001;
+            else if (temp_height < 0.0)
+                temp_height = 0.0;
+            else if (temp_height > 1.0)
+                temp_height = 1.0;
 
-            double height = map[i*width + j].height;
-            if (height < 0.55) {    //Deep sea
+
+                map[i*width + j].height = temp_height;
+            if (temp_height < 0.55) {    //Deep sea
                 map[i*width + j].ID = BIOME::deep_sea;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = 0;
     			map[i*width + j].b = deep_sea_blue(random_num);
             }
-            else if (height < 0.57) {     //If under water table
+            else if (temp_height < 0.57) {     //If under water table
                 map[i*width + j].ID = BIOME::shore;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = 0;
     			map[i*width + j].b = shore_blue(random_num);
             }
-            else if (height < 0.59) {     //sand beaches
+            else if (temp_height < 0.59) {     //sand beaches
                 map[i*width + j].ID = BIOME::beach;
                 map[i*width + j].r = 240;
     			map[i*width + j].g = 255;
     			map[i*width + j].b = 140;
             }
-            else if (height < 0.8) { //grass
+            else if (temp_height < 0.8) { //grass
                 map[i*width + j].ID = BIOME::grassland;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = grassland_green(random_num);
     			map[i*width + j].b = 0;
             }
-            else if (height < 0.9) {    //darker grass
+            else if (temp_height < 0.9) {    //darker grass
                 map[i*width + j].ID = BIOME::woodland;
                 map[i*width + j].r = 0;
     			map[i*width + j].g = woodland_green(random_num);
     			map[i*width + j].b = 0;
             }
-            else if (height < 0.99999) {    //rock
+            else if (temp_height < 0.99999) {    //rock
                 map[i*width + j].ID = BIOME::mountain;
                 Uint8 c_val = mountain_all(random_num);
                 map[i*width + j].r = c_val;
@@ -286,7 +295,7 @@ void render(const std::vector<Pixel>& map, int width, int height,
     long start_time = SDL_GetTicks();
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
-            const Pixel* p = &map[i*width + j];
+            const Pixel* p = &map[i*map_width + j];
             if (SDL_SetRenderDrawColor(rend, p->r, p->g, p->b, SDL_ALPHA_OPAQUE)
                 < 0 ) {
                     LOG("Failed to set draw colour!");
@@ -362,24 +371,24 @@ void handle_input()
     }
 }
 
-void write_to_file(const std::vector<Pixel>& map)
+void write_to_file(const std::vector<Pixel>& map, int width, int height)
 {
     LOG("Writing file");
     BMP image, color_image;
-    image.SetSize(screen_width, screen_height);
-    color_image.SetSize(screen_width, screen_height);
+    image.SetSize(width, height);
+    color_image.SetSize(width, height);
     color_image.SetBitDepth(32);
     image.SetBitDepth(32);
-    for (int y=0; y<screen_height; y++) {
-        for (int x=0; x<screen_width; x++) {
-            image(x, y)->Red = map[y*screen_width + x].height * 255;
-            image(x, y)->Green = map[y*screen_width + x].height * 255;
-            image(x, y)->Blue = map[y*screen_width + x].height * 255;
+    for (int y=0; y<height; y++) {
+        for (int x=0; x<width; x++) {
+            image(x, y)->Red = map[y*width + x].height * 255;
+            image(x, y)->Green = map[y*width + x].height * 255;
+            image(x, y)->Blue = map[y*width + x].height * 255;
             image(x, y)->Alpha = 255;
 
-            color_image(x, y)->Red = map[y*screen_width + x].r;
-            color_image(x, y)->Green = map[y*screen_width + x].g;
-            color_image(x, y)->Blue = map[y*screen_width + x].b;
+            color_image(x, y)->Red = map[y*width + x].r;
+            color_image(x, y)->Green = map[y*width + x].g;
+            color_image(x, y)->Blue = map[y*width + x].b;
             color_image(x, y)->Alpha = 255;
         }
     }
@@ -472,10 +481,10 @@ int main(int argc, char* argv[])
             reload = false;
             clear(renderer);
             SDL_RenderPresent(renderer);
-            fill(map, map_width, map_height);
+            fill(map, screen_width, screen_height);
 
             clear(renderer);
-            render(map, map_width, map_height, renderer);
+            render(map, screen_width, screen_height, renderer);
             SDL_RenderPresent(renderer);
         }
         else if (greyscale_reload) {
@@ -485,7 +494,7 @@ int main(int argc, char* argv[])
             fill_greyscale(map, map_width, map_height);
 
             clear(renderer);
-            render(map, map_width, map_height, renderer);
+            render(map, screen_width, screen_height, renderer);
             SDL_RenderPresent(renderer);
         }
         else if (load_map) {
@@ -495,7 +504,7 @@ int main(int argc, char* argv[])
             fill_with_map(map, map_width, map_height);
 
             clear(renderer);
-            render(map, map_width, map_height, renderer);
+            render(map, screen_width, screen_height, renderer);
             SDL_RenderPresent(renderer);
         }
 		else if (noisify_map) {
@@ -505,13 +514,13 @@ int main(int argc, char* argv[])
             fill_noise(map, map_width, map_height);
 
             clear(renderer);
-            render(map, map_width, map_height, renderer);
+            render(map, screen_width, screen_height, renderer);
             SDL_RenderPresent(renderer);
 		}
         else if (write_map) {
             SDL_SetWindowTitle(window, "Writing to file");
             write_map = false;
-            write_to_file(map);
+            write_to_file(map, map_width, map_height);
             SDL_SetWindowTitle(window, "Finished writing to file");
         }
         else {
