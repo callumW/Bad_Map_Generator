@@ -37,6 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 
 #include "Logger.h"
+#include "EasyBMP.h"
 
 /*
 Side length of each pixel (value of 1 means that there is a 1:1 mapping from
@@ -81,6 +82,7 @@ bool reload = true;
 bool greyscale_reload = false;
 bool load_map = false;
 bool noisify_map = false;
+bool write_map = false;
 /* Random stuff */
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937 random_num{seed};  //generator
@@ -348,6 +350,10 @@ void handle_input()
                 frequency -= freq_increment;
                 LOG("Frequency: " + std::to_string(frequency));
             }
+            else if (e.key.keysym.sym == SDLK_w) {
+                write_map = true;
+                LOG("Writing to file");
+            }
         }
         else if (e.type == SDL_QUIT) {
             running = false;
@@ -356,7 +362,31 @@ void handle_input()
     }
 }
 
+void write_to_file(const std::vector<Pixel>& map)
+{
+    LOG("Writing file");
+    BMP image, color_image;
+    image.SetSize(screen_width, screen_height);
+    color_image.SetSize(screen_width, screen_height);
+    color_image.SetBitDepth(32);
+    image.SetBitDepth(32);
+    for (int y=0; y<screen_height; y++) {
+        for (int x=0; x<screen_width; x++) {
+            image(x, y)->Red = map[y*screen_width + x].height * 255;
+            image(x, y)->Green = map[y*screen_width + x].height * 255;
+            image(x, y)->Blue = map[y*screen_width + x].height * 255;
+            image(x, y)->Alpha = 255;
 
+            color_image(x, y)->Red = map[y*screen_width + x].r;
+            color_image(x, y)->Green = map[y*screen_width + x].g;
+            color_image(x, y)->Blue = map[y*screen_width + x].b;
+            color_image(x, y)->Alpha = 255;
+        }
+    }
+    image.WriteToFile("Map.bmp");
+    color_image.WriteToFile("Color_Map.bmp");
+    LOG("Finished writing to file");
+}
 
 
 
@@ -478,6 +508,12 @@ int main(int argc, char* argv[])
             render(map, map_width, map_height, renderer);
             SDL_RenderPresent(renderer);
 		}
+        else if (write_map) {
+            SDL_SetWindowTitle(window, "Writing to file");
+            write_map = false;
+            write_to_file(map);
+            SDL_SetWindowTitle(window, "Finished writing to file");
+        }
         else {
             SDL_Delay(50);
         }
