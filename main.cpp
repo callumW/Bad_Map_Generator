@@ -73,16 +73,16 @@ struct Pixel {
 constexpr bool fullscreen = false;
 constexpr int screen_width = 512;
 constexpr int screen_height = 512;
-constexpr int map_width = 1000;
-constexpr int map_height = 1000;
+constexpr int map_width = 2500;
+constexpr int map_height = 2500;
 
 /* States */
 bool running = true;
-bool reload = true;
+bool reload = false;
 bool greyscale_reload = false;
 bool load_map = false;
-bool noisify_map = false;
-bool write_map = false;
+bool noisify_map = true;
+bool write_map = true;
 /* Random stuff */
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937 random_num{seed};  //generator
@@ -114,7 +114,7 @@ double noisify(double nx, double ny) {
 /*
 Fill the map with random color values
 */
-void fill(std::vector<Pixel>& map, int width, int height)
+void fill(Pixel* map, int width, int height)
 {
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
@@ -129,7 +129,7 @@ void fill(std::vector<Pixel>& map, int width, int height)
 /*
 Fill the map with greyscale color values
 */
-void fill_greyscale(std::vector<Pixel>& map, int width, int height)
+void fill_greyscale(Pixel* map, int width, int height)
 {
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
@@ -144,7 +144,7 @@ void fill_greyscale(std::vector<Pixel>& map, int width, int height)
 /*
 Fill the map with an actual map!
 */
-void fill_with_map(std::vector<Pixel>& map, int width, int height)
+void fill_with_map(Pixel* map, int width, int height)
 {
     std::uniform_int_distribution<int> standard_dist(0, 262144);
 
@@ -211,7 +211,7 @@ void fill_with_map(std::vector<Pixel>& map, int width, int height)
 
 }
 
-void fill_noise(std::vector<Pixel>& map, int width, int height)
+void fill_noise(Pixel* map, int width, int height)
 {
     long start_time = SDL_GetTicks();
 	for (int i=0; i<height; i++) {
@@ -227,51 +227,55 @@ void fill_noise(std::vector<Pixel>& map, int width, int height)
                 temp_height = 1.0;
 
 
-                map[i*width + j].height = temp_height;
+                //map[i*width + j].height = temp_height;
+                Pixel pix{};
+                pix.height = temp_height;
             if (temp_height < 0.55) {    //Deep sea
-                map[i*width + j].ID = BIOME::deep_sea;
-                map[i*width + j].r = 0;
-    			map[i*width + j].g = 0;
-    			map[i*width + j].b = deep_sea_blue(random_num);
+                pix.ID = BIOME::deep_sea;
+                pix.r = 0;
+    			pix.g = 0;
+    			pix.b = deep_sea_blue(random_num);
             }
             else if (temp_height < 0.57) {     //If under water table
-                map[i*width + j].ID = BIOME::shore;
-                map[i*width + j].r = 0;
-    			map[i*width + j].g = 0;
-    			map[i*width + j].b = shore_blue(random_num);
+                pix.ID = BIOME::shore;
+                pix.r = 0;
+    			pix.g = 0;
+    			pix.b = shore_blue(random_num);
             }
             else if (temp_height < 0.59) {     //sand beaches
-                map[i*width + j].ID = BIOME::beach;
-                map[i*width + j].r = 240;
-    			map[i*width + j].g = 255;
-    			map[i*width + j].b = 140;
+                pix.ID = BIOME::beach;
+                pix.r = 240;
+    			pix.g = 255;
+    			pix.b = 140;
             }
             else if (temp_height < 0.8) { //grass
-                map[i*width + j].ID = BIOME::grassland;
-                map[i*width + j].r = 0;
-    			map[i*width + j].g = grassland_green(random_num);
-    			map[i*width + j].b = 0;
+                pix.ID = BIOME::grassland;
+                pix.r = 0;
+    			pix.g = grassland_green(random_num);
+    			pix.b = 0;
             }
             else if (temp_height < 0.9) {    //darker grass
-                map[i*width + j].ID = BIOME::woodland;
-                map[i*width + j].r = 0;
-    			map[i*width + j].g = woodland_green(random_num);
-    			map[i*width + j].b = 0;
+                pix.ID = BIOME::woodland;
+                pix.r = 0;
+    			pix.g = woodland_green(random_num);
+    			pix.b = 0;
             }
             else if (temp_height < 0.99999) {    //rock
-                map[i*width + j].ID = BIOME::mountain;
+                pix.ID = BIOME::mountain;
                 Uint8 c_val = mountain_all(random_num);
-                map[i*width + j].r = c_val;
-    			map[i*width + j].g = c_val;
-    			map[i*width + j].b = c_val;
+                pix.r = c_val;
+    			pix.g = c_val;
+    			pix.b = c_val;
             }
             else {      //snow caps
-                map[i*width + j].ID = BIOME::snow;
+                pix.ID = BIOME::snow;
                 Uint8 c_val = snow_all(random_num);
-                map[i*width + j].r = c_val;
-    			map[i*width + j].g = c_val;
-    			map[i*width + j].b = c_val;
+                pix.r = c_val;
+    			pix.g = c_val;
+    			pix.b = c_val;
             }
+
+            map[i*width + j] = pix;
         }
     }
 	/*
@@ -289,7 +293,7 @@ void fill_noise(std::vector<Pixel>& map, int width, int height)
 /*
 Render the map on screen_width
 */
-void render(const std::vector<Pixel>& map, int width, int height,
+void render(const Pixel* map, int width, int height,
     SDL_Renderer* rend)
 {
     long start_time = SDL_GetTicks();
@@ -371,7 +375,7 @@ void handle_input()
     }
 }
 
-void write_to_file(const std::vector<Pixel>& map, int width, int height)
+void write_to_file(Pixel* map, int width, int height)
 {
     LOG("Writing file");
     BMP image, color_image;
@@ -436,8 +440,18 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    LOG("Creating vector");
     //Create an array of on screen pixels
-    std::vector<Pixel> map{};
+    //std::vector<Pixel> map{};
+    uint64_t size = map_width * map_height * sizeof(Pixel);
+    LOG("Trying to allocate: " + std::to_string(size / 1000000) + "MB!");
+    Pixel* map = (Pixel*) malloc(size);
+
+    if (map == NULL) {
+        LOG("Failed to create map array");
+        exit(2);
+    }
+    /*
     try {
         map.reserve(map_width * map_height);
     }
@@ -445,13 +459,15 @@ int main(int argc, char* argv[])
         LOG("Failed to reserve enough space in the map vector");
         LOG("Error: " + std::string{e.what()});
         return 1;
-    }
+    }*/
+
+    LOG("Created vector");
 
     Uint32 current_time = 0;
     Uint32 frame_check_time = 0;
     long frames = 0;
 
-    fill(map, map_width, map_height);   //fill the map with random values
+    //fill(map, map_width, map_height);   //fill the map with random values
 
     frame_check_time = SDL_GetTicks();
     LOG("Entering main loop");
