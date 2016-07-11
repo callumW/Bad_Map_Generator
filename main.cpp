@@ -32,7 +32,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <string>
 #include <vector>
-
 #include <chrono>
 #include <random>
 
@@ -73,16 +72,22 @@ struct Pixel {
 constexpr bool fullscreen = false;
 constexpr int screen_width = 512;
 constexpr int screen_height = 512;
-constexpr int map_width = 2500;
-constexpr int map_height = 2500;
+constexpr int map_width = 2000;
+constexpr int map_height = 2000;
+
+/** Drawing Objects **/
+SDL_Texture* map_image;
+SDL_Rect screen_location{0, 0, screen_width, screen_height};
+SDL_Rect screen_rect{0, 0, screen_width, screen_height};
 
 /* States */
 bool running = true;
-bool reload = false;
+bool reload = true;
 bool greyscale_reload = false;
 bool load_map = false;
-bool noisify_map = true;
-bool write_map = true;
+bool noisify_map = false;
+bool write_map = false;
+bool screen_changed = true;
 /* Random stuff */
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::mt19937 random_num{seed};  //generator
@@ -229,6 +234,7 @@ void fill_noise(Pixel* map, int width, int height)
 
                 //map[i*width + j].height = temp_height;
                 Pixel pix{};
+                pix.rect = SDL_Rect{j, i, PIXEL_LENGTH, PIXEL_LENGTH};
                 pix.height = temp_height;
             if (temp_height < 0.55) {    //Deep sea
                 pix.ID = BIOME::deep_sea;
@@ -296,11 +302,12 @@ Render the map on screen_width
 void render(const Pixel* map, int width, int height,
     SDL_Renderer* rend)
 {
+    SDL_SetRenderTarget(rend, map_image);
     long start_time = SDL_GetTicks();
     for (int i=0; i<height; i++) {
         for (int j=0; j<width; j++) {
             const Pixel* p = &map[i*map_width + j];
-            if (SDL_SetRenderDrawColor(rend, p->r, p->g, p->b, SDL_ALPHA_OPAQUE)
+            if (SDL_SetRenderDrawColor(rend, p->r, p->g, p->b, SDL_ALPHA_OPAQUE < 0)
                 < 0 ) {
                     LOG("Failed to set draw colour!");
                     return;
@@ -314,6 +321,8 @@ void render(const Pixel* map, int width, int height,
     }
     long end_time = SDL_GetTicks();
     LOG("Rendering time: " + std::to_string(end_time-start_time) + "ms");
+
+    SDL_SetRenderTarget(rend, NULL);
 }
 
 
@@ -322,7 +331,7 @@ Clear the screen
 */
 void clear(SDL_Renderer* r)
 {
-    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
     SDL_RenderClear(r);
 }
 
@@ -336,6 +345,7 @@ void handle_input()
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0) {
         if (e.type == SDL_KEYDOWN) {
+            screen_changed = true;
             if (e.key.keysym.sym == SDLK_ESCAPE) {
                 running = false;
                 break;
@@ -401,6 +411,11 @@ void write_to_file(Pixel* map, int width, int height)
     LOG("Finished writing to file");
 }
 
+void update(SDL_Renderer* rend) {
+    SDL_RenderCopy(rend, map_image, &screen_location, &screen_rect);
+    SDL_RenderPresent(rend);
+}
+
 
 
 int main(int argc, char* argv[])
@@ -438,6 +453,14 @@ int main(int argc, char* argv[])
         LOG("Error: ");
         LOG(std::string{SDL_GetError()});
         return 1;
+    }
+
+    map_image = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_TARGET, map_width, map_height);
+
+    if (map_image == NULL) {
+        LOG("Failed to create map_image!");
+        return 2;
     }
 
     LOG("Creating vector");
@@ -497,11 +520,10 @@ int main(int argc, char* argv[])
             reload = false;
             clear(renderer);
             SDL_RenderPresent(renderer);
-            fill(map, screen_width, screen_height);
+            fill(map, map_width, screen_height);
 
             clear(renderer);
             render(map, screen_width, screen_height, renderer);
-            SDL_RenderPresent(renderer);
         }
         else if (greyscale_reload) {
             greyscale_reload = false;
@@ -511,7 +533,6 @@ int main(int argc, char* argv[])
 
             clear(renderer);
             render(map, screen_width, screen_height, renderer);
-            SDL_RenderPresent(renderer);
         }
         else if (load_map) {
             load_map = false;
@@ -521,7 +542,6 @@ int main(int argc, char* argv[])
 
             clear(renderer);
             render(map, screen_width, screen_height, renderer);
-            SDL_RenderPresent(renderer);
         }
 		else if (noisify_map) {
 			noisify_map = false;
@@ -531,7 +551,6 @@ int main(int argc, char* argv[])
 
             clear(renderer);
             render(map, screen_width, screen_height, renderer);
-            SDL_RenderPresent(renderer);
 		}
         else if (write_map) {
             SDL_SetWindowTitle(window, "Writing to file");
@@ -542,6 +561,11 @@ int main(int argc, char* argv[])
         else {
             SDL_Delay(50);
         }
+
+        if (screen_changed) {
+            update(renderer);
+        }
+
 
         frames++;
     }
