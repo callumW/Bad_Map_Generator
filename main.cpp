@@ -74,6 +74,7 @@ constexpr int screen_width = 512;
 constexpr int screen_height = 512;
 constexpr int map_width = 2000;
 constexpr int map_height = 2000;
+constexpr float zoom_factor = 100;
 
 /** Drawing Objects **/
 SDL_Texture* map_image;
@@ -100,6 +101,39 @@ double frequency = 0.004;
 int prev_mouse_x;
 int prev_mouse_y;
 
+void zoom(int y)
+{   int new_width = screen_location.w;
+    int new_height = screen_location.h;
+    if (y < 0) {    //Scrolling down, zooming out
+        new_width += zoom_factor;
+        new_height += zoom_factor;
+        
+        if (new_width > map_width)
+            new_width = map_width;
+        if (new_height > map_height)
+            new_height = map_height;
+    }
+    else if (y > 0) {   //Scrolling up, zooming in
+        new_width -= zoom_factor;
+        new_height -= zoom_factor;
+
+        if (new_width < 1)
+            new_width = screen_width;
+        if (new_height < 1)
+            new_height = screen_height;
+    }
+
+    if (screen_location.x + screen_location.w > map_width)
+        if (screen_location.x != 0)
+            screen_location.x = map_width - screen_location.w;
+    if (screen_location.y + screen_location.h > map_height)
+        if (screen_location.y != 0)
+            screen_location.y = map_height - screen_location.h;
+
+    screen_location.w = new_width;
+    screen_location.h = new_height;
+}
+
 void update_screen_location(int mouse_x, int mouse_y)
 {
     int mouse_dx = prev_mouse_x - mouse_x;
@@ -111,13 +145,13 @@ void update_screen_location(int mouse_x, int mouse_y)
     /** Ensure screen_location is still in the map **/
     if (new_x < 0)
         new_x = 0;
-    else if (new_x + screen_width > map_width)
-        new_x = map_width - screen_width;
+    else if (new_x + screen_location.w > map_width)
+        new_x = map_width - screen_location.w;
 
     if (new_y < 0)
         new_y = 0;
-    else if (new_y + screen_height > map_height)
-        new_y = map_height - screen_height;
+    else if (new_y + screen_location.h > map_height)
+        new_y = map_height - screen_location.h;
 
     screen_location.x = new_x;
     screen_location.y = new_y;
@@ -408,7 +442,7 @@ void handle_input()
                 LOG("Writing to file");
             }
         }
-        if (e.type == SDL_MOUSEBUTTONDOWN) {
+        else if (e.type == SDL_MOUSEBUTTONDOWN) {
             int x, y;
             if ((SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK) ==
                 SDL_BUTTON_LMASK) {
@@ -426,6 +460,9 @@ void handle_input()
                 prev_mouse_x = x;
                 prev_mouse_y = y;
             }
+        }
+        else if (e.type == SDL_MOUSEWHEEL) {
+            zoom(e.wheel.y);
         }
         else if (e.type == SDL_QUIT) {
             running = false;
