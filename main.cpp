@@ -97,6 +97,36 @@ noise::module::Perlin gen;	//noise generator
 constexpr double freq_increment = 0.001;
 double frequency = 0.004;
 
+int prev_mouse_x;
+int prev_mouse_y;
+
+void update_screen_location(int mouse_x, int mouse_y)
+{
+    int mouse_dx = prev_mouse_x - mouse_x;
+    int mouse_dy = prev_mouse_y - mouse_y;
+
+    int new_x = screen_location.x + mouse_dx;
+    int new_y = screen_location.y + mouse_dy;
+
+    /** Ensure screen_location is still in the map **/
+    if (new_x < 0)
+        new_x = 0;
+    else if (new_x + screen_width > map_width)
+        new_x = map_width - screen_width;
+
+    if (new_y < 0)
+        new_y = 0;
+    else if (new_y + screen_height > map_height)
+        new_y = map_height - screen_height;
+
+    screen_location.x = new_x;
+    screen_location.y = new_y;
+
+    prev_mouse_x = mouse_x;
+    prev_mouse_y = mouse_y;
+
+}
+
 
 /*
 A distribution allows us to specify a range for our random numbers. Here we use
@@ -378,6 +408,25 @@ void handle_input()
                 LOG("Writing to file");
             }
         }
+        if (e.type == SDL_MOUSEBUTTONDOWN) {
+            int x, y;
+            if ((SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK) ==
+                SDL_BUTTON_LMASK) {
+                prev_mouse_x = x;
+                prev_mouse_y = y;
+            }
+        }
+        else if (e.type == SDL_MOUSEMOTION) {
+            int x, y;
+            if ((SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK) ==
+                SDL_BUTTON_LMASK) {
+                    update_screen_location(x, y);
+            }
+            else {
+                prev_mouse_x = x;
+                prev_mouse_y = y;
+            }
+        }
         else if (e.type == SDL_QUIT) {
             running = false;
             break;
@@ -523,7 +572,7 @@ int main(int argc, char* argv[])
             fill(map, map_width, screen_height);
 
             clear(renderer);
-            render(map, screen_width, screen_height, renderer);
+            render(map, map_width, map_height, renderer);
         }
         else if (greyscale_reload) {
             greyscale_reload = false;
@@ -532,7 +581,7 @@ int main(int argc, char* argv[])
             fill_greyscale(map, map_width, map_height);
 
             clear(renderer);
-            render(map, screen_width, screen_height, renderer);
+            render(map, map_width, map_height, renderer);
         }
         else if (load_map) {
             load_map = false;
@@ -541,7 +590,7 @@ int main(int argc, char* argv[])
             fill_with_map(map, map_width, map_height);
 
             clear(renderer);
-            render(map, screen_width, screen_height, renderer);
+            render(map, map_width, map_height, renderer);
         }
 		else if (noisify_map) {
 			noisify_map = false;
@@ -550,7 +599,7 @@ int main(int argc, char* argv[])
             fill_noise(map, map_width, map_height);
 
             clear(renderer);
-            render(map, screen_width, screen_height, renderer);
+            render(map, map_width, map_height, renderer);
 		}
         else if (write_map) {
             SDL_SetWindowTitle(window, "Writing to file");
