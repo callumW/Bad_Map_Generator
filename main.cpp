@@ -43,6 +43,8 @@ Side length of each pixel (value of 1 means that there is a 1:1 mapping from
 screen pixels to data pixels).
 */
 #define PIXEL_LENGTH 1
+/** How many colors should there be per point **/
+#define RESOLUTION_FACTOR 2
 
 enum class BIOME {
     empty, deep_sea, shore, beach, grassland, woodland, mountain, snow
@@ -107,7 +109,7 @@ void zoom(int y)
     if (y < 0) {    //Scrolling down, zooming out
         new_width += zoom_factor;
         new_height += zoom_factor;
-        
+
         if (new_width > map_width)
             new_width = map_width;
         if (new_height > map_height)
@@ -476,7 +478,7 @@ void write_to_file(Pixel* map, int width, int height)
     LOG("Writing file");
     BMP image, color_image;
     image.SetSize(width, height);
-    color_image.SetSize(width, height);
+    color_image.SetSize(width*RESOLUTION_FACTOR/2, height*RESOLUTION_FACTOR/2);
     color_image.SetBitDepth(32);
     image.SetBitDepth(32);
     for (int y=0; y<height; y++) {
@@ -486,12 +488,58 @@ void write_to_file(Pixel* map, int width, int height)
             image(x, y)->Blue = map[y*width + x].height * 255;
             image(x, y)->Alpha = 255;
 
-            color_image(x, y)->Red = map[y*width + x].r;
-            color_image(x, y)->Green = map[y*width + x].g;
-            color_image(x, y)->Blue = map[y*width + x].b;
-            color_image(x, y)->Alpha = 255;
+            if (y<height-1 && x<width-1) {
+                if (x == 0 && y == 0) {
+                    color_image(x, y)->Red = map[y*width + x].r;
+                    color_image(x+1, y)->Red = map[y*width + x].r;
+                    color_image(x, y+1)->Red = map[y*width + x].r;
+                    color_image(x+1, y+1)->Red = map[y*width + x].r;
+
+                    color_image(x, y)->Green = map[y*width + x].g;
+                    color_image(x+1, y)->Green = map[y*width + x].g;
+                    color_image(x, y+1)->Green = map[y*width + x].g;
+                    color_image(x+1, y+1)->Green = map[y*width + x].g;
+
+                    color_image(x, y)->Blue = map[y*width + x].b;
+                    color_image(x+1, y)->Blue = map[y*width + x].b;
+                    color_image(x, y+1)->Blue = map[y*width + x].b;
+                    color_image(x+1, y+1)->Blue = map[y*width + x].b;
+
+                    color_image(x, y)->Alpha = 255;
+                    color_image(x+1, y)->Alpha = 255;
+                    color_image(x, y+1)->Alpha = 255;
+                    color_image(x+1, y+1)->Alpha = 255;
+                }
+                else {
+                    int off_x = x + (RESOLUTION_FACTOR/4);
+                    int off_y = y + (RESOLUTION_FACTOR/4);
+
+                    color_image(off_x, off_y)->Red = map[y*width + x].r;
+                    color_image(off_x+1, off_y)->Red = map[y*width + x].r;
+                    color_image(off_x, off_y+1)->Red = map[y*width + x].r;
+                    color_image(off_x+1, off_y+1)->Red = map[y*width + x].r;
+
+                    color_image(off_x, off_y)->Green = map[y*width + x].g;
+                    color_image(off_x+1, off_y)->Green = map[y*width + x].g;
+                    color_image(off_x, off_y+1)->Green = map[y*width + x].g;
+                    color_image(off_x+1, off_y+1)->Green = map[y*width + x].g;
+
+                    color_image(off_x, off_y)->Blue = map[y*width + x].b;
+                    color_image(off_x+1, off_y)->Blue = map[y*width + x].b;
+                    color_image(off_x, off_y+1)->Blue = map[y*width + x].b;
+                    color_image(off_x+1, off_y+1)->Blue = map[y*width + x].b;
+
+                    color_image(off_x, off_y)->Alpha = 255;
+                    color_image(off_x+1, off_y)->Alpha = 255;
+                    color_image(x, off_y+1)->Alpha = 255;
+                    color_image(off_x+1, off_y+1)->Alpha = 255;
+
+                }
+
+            }
         }
     }
+
     image.WriteToFile("Map.bmp");
     color_image.WriteToFile("Color_Map.bmp");
     LOG("Finished writing to file");
