@@ -114,7 +114,7 @@ public:
 
     void set_source_location(int x, int y);
 
-    void show(SDL_Rect* destination);
+    bool show(SDL_Rect* destination);
 
     int width;    /**< Width of the pixel map */
     int height;   /**< Height of the pixel map */

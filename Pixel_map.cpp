@@ -23,12 +23,13 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     File: Pixel_map.cpp
-    Callum Wilson
-    2016-7-13
-    Defines a pixel map, see Pixel_map.h
+    Author: Callum Wilson, callum.w@outlook.com
+    Date: 2016-7-13
+    Description: Defines a pixel map, see Pixel_map.h
 */
 #include "Pixel_map.h"
 #include "Perlin_noise_generator.h"
+#include "Logger.h"
 #include <libnoise/module/perlin.h>
 #include <climits>
 
@@ -189,7 +190,9 @@ void Pixel_map::fill_perlin_map(double freq)
 
 bool Pixel_map::render()
 {
-    SDL_SetRenderTarget(renderer, map_image);
+    if (SDL_SetRenderTarget(renderer, map_image) < 0) {
+        throw std::runtime_error("Failed to change rendering target to map_image.");
+    }
 
     for (int y=0; y<height; y++) {
         for (int x=0; x<width; x++) {
@@ -200,7 +203,10 @@ bool Pixel_map::render()
             SDL_RenderFillRect(renderer, &p->rect);
         }
     }
-    SDL_SetRenderTarget(renderer, NULL);
+
+    if (SDL_SetRenderTarget(renderer, NULL) < 0) {
+        throw std::runtime_error("Failed to revert renderer");
+    }
 }
 
 void Pixel_map::zoom(double z)
@@ -237,7 +243,11 @@ void Pixel_map::increment_zoom(double inc)
         zoom(zoom_factor + inc);
 }
 
-void Pixel_map::show(SDL_Rect* destination)
+bool Pixel_map::show(SDL_Rect* destination)
 {
-    SDL_RenderCopy(renderer, map_image, &source_location, destination);
+    if (SDL_SetRenderTarget(renderer, NULL) != 0) {
+        LOG("Failed to set renderer target to default");
+    }
+    return SDL_RenderCopy(renderer, map_image, &source_location, destination)
+        == 0;
 }

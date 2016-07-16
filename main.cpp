@@ -62,13 +62,14 @@ int prev_mouse_x;
 int prev_mouse_y;
 
 void zoom(int y)
-{   int new_width = screen_location.w;
-    int new_height = screen_location.h;
+{
+    int new_width = map->source_location.w;
+    int new_height = map->source_location.h;
     if (y < 0) {    //Scrolling down, zooming out
-        map.increment_zoom(-0.05);
+        map->increment_zoom(-0.05);
     }
     else if (y > 0) {   //Scrolling up, zooming in
-        map.increment_zoom();
+        map->increment_zoom();
     }
 }
 
@@ -77,21 +78,21 @@ void update_screen_location(int mouse_x, int mouse_y)
     int mouse_dx = prev_mouse_x - mouse_x;
     int mouse_dy = prev_mouse_y - mouse_y;
 
-    int new_x = map.x() + mouse_dx;
-    int new_y = map.y() + mouse_dy;
+    int new_x = map->x() + mouse_dx;
+    int new_y = map->y() + mouse_dy;
 
     /** Ensure screen_location is still in the map **/
     if (new_x < 0)
         new_x = 0;
-    else if (new_x + map.source_location.w > map_width)
-        new_x = map_width - map.source_location.w;
+    else if (new_x + map->source_location.w > map_width)
+        new_x = map_width - map->source_location.w;
 
     if (new_y < 0)
         new_y = 0;
-    else if (new_y + map.source_location.h > map_height)
-        new_y = map_height - map.source_location.h;
+    else if (new_y + map->source_location.h > map_height)
+        new_y = map_height - map->source_location.h;
 
-    m.set_source_location(new_x, new_y);
+    map->set_source_location(new_x, new_y);
 
     prev_mouse_x = mouse_x;
     prev_mouse_y = mouse_y;
@@ -154,10 +155,10 @@ void handle_input()
         else if (e.type == SDL_MOUSEWHEEL) {
             zoom(e.wheel.y);
         }
-        else if (e.type == SDL_QUIT) {
-            running = false;
-            break;
-        }
+    }
+    else if (e.type == SDL_QUIT) {
+        running = false;
+        break;
     }
 }
 /*
@@ -230,8 +231,8 @@ void write_to_file(Pixel* map, int width, int height)
 
     image.WriteToFile("Map.bmp");
     color_image.WriteToFile("Color_Map.bmp");
-    LOG("Finished writing to file");
-}*/
+    LOG("Finished writing to file");*/
+}
 
 int main(int argc, char* argv[])
 {
@@ -288,7 +289,7 @@ int main(int argc, char* argv[])
                 + std::to_string(frames * 1000.0 / (current_time -
                 frame_check_time))
                 + " | Runtime: " + std::to_string(current_time / 1000)
-                + "s" + " Frequency: " + std::to_string(frequency)};
+                + "s"};
 
             SDL_SetWindowTitle(window, msg.c_str());
 
@@ -302,22 +303,33 @@ int main(int argc, char* argv[])
         if (reload) {
             //Generate a new map
             reload = false;
-            map.fill_color_static();
+            map->fill_color_static();
+            map->render();
         }
         else if (greyscale_reload) {
             greyscale_reload = false;
-            map.fill_static();
-		else if (noisify_map) {
-			noisify_map = false;
-            map.fill_perlin_noise();
+            map->fill_static();
+            map->render();
+        }
+		else if (perlin) {
+			perlin = false;
+            map->fill_perlin_noise();
+            map->render();
 		}
-        else if ()
+        //else if () {}
         else {
             SDL_Delay(50);
         }
 
         if (screen_changed) {
-            show(&screen_rect);
+            screen_changed = false;
+            if (!map->show(&screen_rect)) {
+                LOG("Failed to render!");
+                LOG(SDL_GetError());
+            }
+            else {
+                SDL_RenderPresent(renderer);
+            }
         }
 
         frames++;
