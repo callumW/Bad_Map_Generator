@@ -28,6 +28,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Defines a pixel map, see Pixel_map.h
 */
 #include "Pixel_map.h"
+#include "Perlin_noise_generator.h"
 #include <libnoise/module/perlin.h>
 #include <climits>
 
@@ -49,7 +50,7 @@ Pixel_map::Pixel_map(SDL_Renderer* r, int w, int h, int pl, double z)
 
     if (map_image == NULL)
         throw std::runtime_error("Failed to create map_image: " +
-            SDL_GetError());
+            std::string{SDL_GetError()});
 
     zero_map_pixels();
 
@@ -112,7 +113,7 @@ void Pixel_map::fill_static()
     }
 }
 
-void Pixel_map::fill_perlin_noise(double freq=0.004f)
+void Pixel_map::fill_perlin_noise(double freq)
 {
     Perlin_noise_generator generator{};
     for (int y=0; y<height; y++) {
@@ -123,16 +124,16 @@ void Pixel_map::fill_perlin_noise(double freq=0.004f)
             map[y*width + x].r = color;
             map[y*width + x].g = color;
             map[y*width + x].b = color;
-            map[y*width + x].ID BIOME::empty;
+            map[y*width + x].ID = BIOME::empty;
         }
     }
 }
 
-void Pixel_map::fill_color_perlin_noise()
+void Pixel_map::fill_color_perlin_noise(double freq)
 {
 }
 
-void Pixel_map::fill_perlin_map(double freq=0.004f)
+void Pixel_map::fill_perlin_map(double freq)
 {
     Perlin_noise_generator generator{};
     for (int y=0; y<height; y++) {
@@ -192,7 +193,7 @@ bool Pixel_map::render()
 
     for (int y=0; y<height; y++) {
         for (int x=0; x<width; x++) {
-            cosnt Pixel* p = &map[y*width + x];
+            const Pixel* p = &map[y*width + x];
             SDL_SetRenderDrawColor(renderer, p->r, p->g, p->b,
                 SDL_ALPHA_OPAQUE);
 
@@ -228,7 +229,7 @@ void Pixel_map::set_source_location(int x, int y)
     }
 }
 
-void Pixel_map::increment_zoom(double inc=0.05f)
+void Pixel_map::increment_zoom(double inc)
 {
     if (zoom_factor + inc < 0)
         return;

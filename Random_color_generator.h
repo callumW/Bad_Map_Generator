@@ -27,6 +27,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <random>
 #include <chrono>
+#include <SDL2/SDL.h>
 class Random_color_generator {
 public:
     /**
@@ -50,6 +51,6 @@ public:
 private:
     unsigned int seed;  /**< The seed for this generator */
     std::mt19937 random_number{};    /**< The generator for this generator */
-    std::uniform_int_distribution<Uint8> dist(0, 255);
+    std::uniform_int_distribution<Uint8> dist;
 };
 #endif

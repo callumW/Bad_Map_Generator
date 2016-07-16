@@ -93,7 +93,7 @@ public:
     /**
      * Fills the pixel map with a map created using perlin noise.
      */
-    void fill_perlin_map();
+    void fill_perlin_map(double freq = 1.0f);
 
     /**
      * Render the map to the screen.
@@ -116,9 +116,9 @@ public:
 
     void show(SDL_Rect* destination);
 
-    const int width;    /**< Width of the pixel map */
-    const int height;   /**< Height of the pixel map */
-    const int pixel_length; /**< The length of the sides of each pixel */
+    int width;    /**< Width of the pixel map */
+    int height;   /**< Height of the pixel map */
+    int pixel_length; /**< The length of the sides of each pixel */
     SDL_Rect source_location;   /**< The current portion of the pixel map to
                                     draw */
 private:

@@ -29,6 +29,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #ifndef PERLIN_NOISE_GENERATOR_H
 #define PERLIN_NOISE_GENERATOR_H
+#include <libnoise/module/perlin.h>
 struct Perlin_noise_generator {
     noise::module::Perlin generator;
     double get_num(double x, double y, double z=0.5f)
