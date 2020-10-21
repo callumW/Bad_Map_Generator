@@ -1,5 +1,5 @@
-#Bad Map Generator
-###A 2D top down map generator.
+# Bad Map Generator
+### A 2D top down map generator.
 Uses SDL for drawing on the screen, getting user input, and timing.
 #Usage
 **ESC** Quit the application.  
@@ -14,8 +14,8 @@ in color, Map.bmp is greyscale.
 **Arrow Down** Decreases frequency of perlin noise by 0.001 (default is
 0.004).  
 #Screenshots
-####Basic maps using perlin noise
+#### Basic maps using perlin noise
 ![screen shot 1](screens/screen_1.png)
 ![screen shot 2](screens/screen_2.png)
-####Moving and zooming
+#### Moving and zooming
 ![moving and zooming](screens/v2.0.0.gif)
